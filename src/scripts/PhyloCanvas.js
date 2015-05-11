@@ -1804,7 +1804,7 @@
         }
         node.canvas.closePath();
 
-        for (var i = 0 ; i < node.children.length  && !collapse; i++) {
+        for (var i = 0; i < node.children.length && !collapse; i++) {
           tree.branchRenderers.hierarchy(tree, node.children[i], node.collapsed || collapse);
         }
       }
@@ -1820,7 +1820,6 @@
         }
 
         if (!this.root) return false;
-        console.log('click', this.offsetx, this.offsety);
         var nd = this.root.clicked(this.offsetx, this.offsety);
 
         if (nd) {
@@ -1874,6 +1873,7 @@
       this.offsetx = event.offsetX || (event.pageX - this.canvas.canvas.offsetLeft);
       this.offsety = event.offsetY || (event.pageY - this.canvas.canvas.offsetTop);
       this.dragged = true;
+
       if (this.dragStart) {
         var pt = this.canvas.transformedPoint(this.offsetx, this.offsety);
         this.canvas.translate(pt.x - this.dragStart.x, pt.y - this.dragStart.y);
@@ -1883,7 +1883,7 @@
 
         var e = event;
         var nd = this.root.clicked(this.offsetx, this.offsety);
-        console.log('drag', this.offsetx, this.offsety);
+
         if (nd && (this.internalNodesSelectable || nd.leaf)) {
           this.root.setHighlighted(false);
           nd.setHighlighted(true);
@@ -1943,10 +1943,6 @@
       this.zoomPickedUp = false;
 
       this.dragStart = null;
-      if (!this.dragged) {
-        this.setZoom(event.shiftKey ? -1 : 1);
-        this.draw();
-      }
     },
     findBranch: function (patt) {
       this.root.setSelected(false, true);
@@ -2226,12 +2222,9 @@
       this.loadCompleted();
     },
     pickup: function (event) {
-
       if (!this.drawn) return false;
 
       document.body.style.mozUserSelect = document.body.style.webkitUserSelect = document.body.style.userSelect = 'none';
-      this.offsetx = event.offsetX || (event.pageX - this.canvas.canvas.offsetLeft);
-      this.offsety = event.offsetY || (event.pageY - this.canvas.canvas.offsetTop);
       this.dragStart = this.canvas.transformedPoint(this.offsetx, this.offsety);
       this.dragged = false;
 
