@@ -1027,8 +1027,9 @@
       if (this.dragging) {
         return;
       }
-      if ((x < (this.maxx) && x > (this.minx)) &&
-          (y < (this.maxy) && y > (this.miny))) {
+      var pt = this.canvas.transformedPoint(x, y);
+      if ((pt.x < (this.maxx) && pt.x > (this.minx)) &&
+          (pt.y < (this.maxy) && pt.y > (this.miny))) {
         return this;
       }
 
@@ -1819,7 +1820,8 @@
         }
 
         if (!this.root) return false;
-        var nd = this.root.clicked(this.translateClickX(e.clientX), this.translateClickY(e.clientY));
+        console.log('click', this.offsetx, this.offsety);
+        var nd = this.root.clicked(this.offsetx, this.offsety);
 
         if (nd) {
           this.root.setSelected(false, true);
@@ -1848,7 +1850,7 @@
     },
     dblclicked: function (e) {
       if (!this.root) return false;
-      var nd = this.root.clicked(this.translateClickX(e.clientX * 1.0), this.translateClickY(e.clientY * 1.0));
+      var nd = this.root.clicked(this.offsetx, this.offsety);
       if (nd) {
         nd.setSelected(false, true);
         nd.toggleCollapsed();
@@ -1880,8 +1882,8 @@
         // hover
 
         var e = event;
-        var nd = this.root.clicked(this.translateClickX(e.clientX * 1.0), this.translateClickY(e.clientY * 1.0));
-
+        var nd = this.root.clicked(this.offsetx, this.offsety);
+        console.log('drag', this.offsetx, this.offsety);
         if (nd && (this.internalNodesSelectable || nd.leaf)) {
           this.root.setHighlighted(false);
           nd.setHighlighted(true);
@@ -2662,24 +2664,24 @@
     translateClickX: function (x) {
       var ratio = (window.devicePixelRatio || 1) / getBackingStorePixelRatio(this.canvas);
 
-      x = (x - getX(this.canvas.canvas) + window.pageXOffset);
+      // x = (x - getX(this.canvas.canvas) + window.pageXOffset);
       x *= ratio;
-      x -= this.canvas.canvas.width / 2;
-      x -= this.offsetx;
-      x = x / this.zoom;
+      // x -= this.canvas.canvas.width / 2;
+      // x -= this.offsetx;
+      // x = x / this.zoom;
 
-      return x;
+      return this.offsetx;
     },
     translateClickY: function (y) {
       var ratio = (window.devicePixelRatio || 1) / getBackingStorePixelRatio(this.canvas);
 
-      y = (y - getY(this.canvas.canvas) + window.pageYOffset); // account for positioning and scroll
-      y *= ratio;
-      y -= this.canvas.canvas.height / 2;
-      y -= this.offsety;
-      y = y / this.zoom;
+      // y = (y - getY(this.canvas.canvas) + window.pageYOffset); // account for positioning and scroll
+      // y *= ratio;
+      // y -= this.canvas.canvas.height / 2;
+      // y -= this.offsety;
+      // y = y / this.zoom;
 
-      return y;
+      return this.offsety;
     },
     viewMetadataColumns: function (metadataColumnArray) {
       this.showMetadata = true;
