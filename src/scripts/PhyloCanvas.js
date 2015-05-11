@@ -5,6 +5,69 @@
  * @modified Jyothish NT 01/03/15
  */
 (function () {
+
+  /**
+   * http://phrogz.net/tmp/canvas_zoom_to_cursor.html
+   *
+   * Adds ctx.getTransform() - returns an SVGMatrix
+   * Adds ctx.transformedPoint(x,y) - returns an SVGPoint
+   */
+  function trackTransforms(ctx) {
+    var svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    var xform = svg.createSVGMatrix();
+    ctx.getTransform = function () { return xform; };
+
+    var savedTransforms = [];
+    var save = ctx.save;
+    ctx.save = function () {
+      savedTransforms.push(xform.translate(0, 0));
+      return save.call(ctx);
+    };
+    var restore = ctx.restore;
+    ctx.restore = function () {
+      xform = savedTransforms.pop();
+      return restore.call(ctx);
+    };
+
+    var scale = ctx.scale;
+    ctx.scale = function (sx, sy) {
+      xform = xform.scaleNonUniform(sx, sy);
+      return scale.call(ctx, sx, sy);
+    };
+    var rotate = ctx.rotate;
+    ctx.rotate = function (radians) {
+      xform = xform.rotate(radians * 180 / Math.PI);
+      return rotate.call(ctx, radians);
+    };
+    var translate = ctx.translate;
+    ctx.translate = function (dx, dy) {
+      xform = xform.translate(dx, dy);
+      return translate.call(ctx, dx, dy);
+    };
+    var transform = ctx.transform;
+    ctx.transform = function (a, b, c, d, e, f) {
+      var m2 = svg.createSVGMatrix();
+      m2.a = a; m2.b = b; m2.c = c; m2.d = d; m2.e = e; m2.f = f;
+      xform = xform.multiply(m2);
+      return transform.call(ctx, a, b, c, d, e, f);
+    };
+    var setTransform = ctx.setTransform;
+    ctx.setTransform = function (a, b, c, d, e, f) {
+      xform.a = a;
+      xform.b = b;
+      xform.c = c;
+      xform.d = d;
+      xform.e = e;
+      xform.f = f;
+      return setTransform.call(ctx, a, b, c, d, e, f);
+    };
+    var pt = svg.createSVGPoint();
+    ctx.transformedPoint = function (x, y) {
+      pt.x = x; pt.y = y;
+      return pt.matrixTransform(xform.inverse());
+    };
+  }
+
   /**
    * Get the y coordinate of oElement
    *
@@ -401,7 +464,7 @@
     this.div.style.background = '#FFFFFF';
     this.div.style.letterSpacing = '0.5px';
     this.div.className = 'pc-tooltip';
-    this.div.innerHTML = 'Hi! This is me again'
+    this.div.innerHTML = 'Hi! This is me again';
 
     this.tree.canvasEl.appendChild(this.div);
   }
@@ -567,6 +630,7 @@
     this.origy = null;
 
     this.canvas = cl.getContext('2d');
+    trackTransforms(this.canvas);
 
     this.canvas.canvas.onselectstart = function () { return false; };
     this.canvas.fillStyle = '#000000';
@@ -614,8 +678,9 @@
     this.addListener('mouseout', this.drop.bind(this));
 
     addEvent(this.canvas.canvas, 'mousemove', this.drag.bind(this));
-    addEvent(this.canvas.canvas, 'mousewheel', this.scroll.bind(this));
-    addEvent(this.canvas.canvas, 'DOMMouseScroll', this.scroll.bind(this));
+    addEvent(this.canvas.canvas, 'mousewheel', this.scroll.bind(this), false);
+    addEvent(this.canvas.canvas, 'DOMMouseScroll', this.scroll.bind(this), false);
+
     addEvent(window, 'resize', function (evt) {
       this.resizeToContainer();
     }.bind(this));
@@ -652,9 +717,9 @@
     // Boolean to detect if metadata heading is drawn or not
     this.metadataHeadingDrawn = false;
 
-  };
+  }
 
-    //static members
+  // static members
   ContextMenu.prototype = {
     close: function () {
       this.div.style.display = 'none';
@@ -721,8 +786,8 @@
   /*
     Prototype for the Tooltip.
   */
-  Tooltip.prototype.close = function(){
-      this.div.style.display = 'none';
+  Tooltip.prototype.close = function () {
+    this.div.style.display = 'none';
   };
   Tooltip.prototype.mouseover = function (d) {
     d.style.backgroundColor = '#E2E3DF';
@@ -1768,29 +1833,21 @@
       this.draw();
     },
     drag: function (event) {
-      //get window ratio
+      // get window ratio
       var ratio = (window.devicePixelRatio || 1) / getBackingStorePixelRatio(this.canvas);
 
       if (!this.drawn) return false;
 
-      if (this.pickedup) {
-        var xmove = (event.clientX - this.startx) * ratio;
-        var ymove = (event.clientY - this.starty) * ratio;
-        if (Math.abs(xmove) + Math.abs(ymove) > 5) {
-          this.dragging = true;
-          this.offsetx = this.origx + xmove;
-          this.offsety = this.origy + ymove;
-          this.draw();
-        }
-      }
-      else if (this.zoomPickedUp) {
-        //right click and drag
-        this.d = ((this.starty - event.clientY) / 100);
-        x = this.translateClickX(this.startx);
-        this.setZoom(this.origZoom + this.d);
+      this.offsetx = event.offsetX || (event.pageX - this.canvas.canvas.offsetLeft);
+      this.offsety = event.offsetY || (event.pageY - this.canvas.canvas.offsetTop);
+      this.dragged = true;
+      if (this.dragStart) {
+        var pt = this.canvas.transformedPoint(this.offsetx, this.offsety);
+        this.canvas.translate(pt.x - this.dragStart.x, pt.y - this.dragStart.y);
         this.draw();
       } else {
-        //hover
+        // hover
+
         var e = event;
         var nd = this.root.clicked(this.translateClickX(e.clientX * 1.0), this.translateClickY(e.clientY * 1.0));
 
@@ -1820,26 +1877,26 @@
         return;
       }
 
-      this.canvas.restore();
+      // this.canvas.restore();
 
-      this.canvas.clearRect(0, 0, this.canvas.canvas.width, this.canvas.canvas.height);
+      var p1 = this.canvas.transformedPoint(0, 0);
+      var p2 = this.canvas.transformedPoint(this.canvas.canvas.width, this.canvas.canvas.height);
+      this.canvas.clearRect(p1.x, p1.y, p2.x - p1.x, p2.y - p1.y);
+
       this.canvas.lineCap = 'round';
       this.canvas.lineJoin = 'round';
-
       this.canvas.strokeStyle = this.branchColour;
-      this.canvas.save();
 
-      this.canvas.translate((this.canvas.canvas.width / 2) / getBackingStorePixelRatio(this.canvas),
-        (this.canvas.canvas.height / 2) / getBackingStorePixelRatio(this.canvas));
+      // this.canvas.save();
 
       if (!this.drawn || forceRedraw) {
+        this.canvas.setTransform(1, 0, 0, 1, 0, 0);
+        this.zoom = 1;
         this.prerenderers[this.treeType](this);
         if (!forceRedraw) { this.fitInPanel(); }
       }
 
       this.canvas.lineWidth = this.lineWidth / this.zoom;
-      this.canvas.translate(this.offsetx, this.offsety);
-      this.canvas.scale(this.zoom, this.zoom);
 
       this.branchRenderers[this.treeType](this, this.root);
       // Making default collapsed false so that it will collapse on initial load only
@@ -1847,10 +1904,16 @@
       this.metadataHeadingDrawn = false;
       this.drawn = true;
     },
-    drop: function () {
+    drop: function (event) {
       if (!this.drawn) return false;
       this.pickedup = false;
       this.zoomPickedUp = false;
+
+      this.dragStart = null;
+      if (!this.dragged) {
+        this.setZoom(event.shiftKey ? -1 : 1);
+        this.draw();
+      }
     },
     findBranch: function (patt) {
       this.root.setSelected(false, true);
@@ -1955,7 +2018,7 @@
         var x1 = 0;
         var x2 = r * 2;
         var y1 = -r;
-        var y2 = r ;
+        var y2 = r;
         node.canvas.moveTo(x1, y1);
         node.canvas.lineTo(x1, y2);
         node.canvas.lineTo(x2, y2);
@@ -1966,7 +2029,7 @@
       },
       star: function (node) {
         var r = node.getNodeSize();
-        var cx =  r ;
+        var cx =  r;
         var cy = 0;
 
         node.canvas.moveTo(cx, cy);
@@ -2112,8 +2175,12 @@
     pickup: function (event) {
 
       if (!this.drawn) return false;
-      this.origx = this.offsetx;
-      this.origy = this.offsety;
+
+      document.body.style.mozUserSelect = document.body.style.webkitUserSelect = document.body.style.userSelect = 'none';
+      this.offsetx = event.offsetX || (event.pageX - this.canvas.canvas.offsetLeft);
+      this.offsety = event.offsetY || (event.pageY - this.canvas.canvas.offsetTop);
+      this.dragStart = this.canvas.transformedPoint(this.offsetx, this.offsety);
+      this.dragged = false;
 
       if (event.button === 0) {
         this.pickedup = true;
@@ -2125,7 +2192,7 @@
         this.oz = this.zoom;
         // position in the diagram on which you clicked
       }
-      this.startx = event.clientX ;
+      this.startx = event.clientX;
       this.starty = event.clientY;
     },
     prerenderers: {
@@ -2410,10 +2477,13 @@
         this.branches[node.id] = node;
       }
     },
-    scroll: function (e) {
-      var z = Math.log(this.zoom) / Math.log(10);
-      this.setZoom(z + (e.wheelDelta ? e.wheelDelta / 1000 : e.detail / -100));
-      e.preventDefault();
+    scroll: function (event) {
+      var delta = event.wheelDelta ? event.wheelDelta / 40 : event.detail ? -event.detail : 0;
+      if (delta) {
+        this.setZoom(delta);
+        this.draw();
+      }
+      event.preventDefault();
     },
     selectNodes: function (nIds) {
       var ns = nIds;
@@ -2480,7 +2550,6 @@
           }
         });
       }
-
     },
     setNodeSize: function (size) {
       this.baseNodeSize = Number(size);
@@ -2497,16 +2566,13 @@
     },
     setFontSize: function (ystep) {
       // Setting tree text size
-      if (this.treeType == 'circular') {
+      if (this.treeType === 'circular') {
         this.textSize = Math.min((ystep * 100) + 5, 40);
-      }
-      else if (this.treeType == 'radial') {
+      } else if (this.treeType === 'radial') {
         this.textSize = Math.min((ystep * 50) + 5, 20);
-      }
-      else if (this.treeType == 'diagonal') {
+      } else if (this.treeType === 'diagonal') {
         this.textSize = Math.min((ystep / 2), 10);
-      }
-      else {
+      } else {
         this.textSize = Math.min((ystep / 2), 15);
       }
       this.canvas.font = this.textSize + 'pt ' + this.font;
@@ -2523,24 +2589,20 @@
     setSize: function (width, height) {
       this.canvas.canvas.width = width;
       this.canvas.canvas.height = height;
+
       if (this.navigator) {
         this.navigator.resize();
       }
       this.adjustForPixelRatio();
-      if (this.drawn) {
-        this.draw();
-      }
     },
-    setZoom: function (z) {
-      if (z > -2 && z < 2) {
-        var oz = this.zoom;
-        this.zoom = Math.pow(10, z);
+    setZoom: function (clicks) {
+      var pt = this.canvas.transformedPoint(this.offsetx, this.offsety);
+      var factor = Math.pow(1.1, clicks);
 
-        this.offsetx = (this.offsetx / oz) * this.zoom;
-        this.offsety = (this.offsety / oz) * this.zoom;
-
-        this.draw();
-      }
+      this.canvas.translate(pt.x, pt.y);
+      this.zoom *= factor;
+      this.canvas.scale(factor, factor);
+      this.canvas.translate(-pt.x, -pt.y);
     },
     toggleLabels: function () {
       this.showLabels = !this.showLabels;
@@ -2549,7 +2611,7 @@
     translateClickX: function (x) {
       var ratio = (window.devicePixelRatio || 1) / getBackingStorePixelRatio(this.canvas);
 
-      x = (x - getX(this.canvas.canvas)  + window.pageXOffset);
+      x = (x - getX(this.canvas.canvas) + window.pageXOffset);
       x *= ratio;
       x -= this.canvas.canvas.width / 2;
       x -= this.offsetx;
@@ -2560,7 +2622,7 @@
     translateClickY: function (y) {
       var ratio = (window.devicePixelRatio || 1) / getBackingStorePixelRatio(this.canvas);
 
-      y = (y - getY(this.canvas.canvas)  + window.pageYOffset) ; // account for positioning and scroll
+      y = (y - getY(this.canvas.canvas) + window.pageYOffset); // account for positioning and scroll
       y *= ratio;
       y -= this.canvas.canvas.height / 2;
       y -= this.offsety;
@@ -2570,7 +2632,7 @@
     },
     viewMetadataColumns: function (metadataColumnArray) {
       this.showMetadata = true;
-      if (metadataColumnArray == undefined) {
+      if (metadataColumnArray === undefined) {
         // Select all column headings so that it will draw all columns
         metadataColumnArray = this.getMetadataColumnHeadings();
       }
@@ -2638,6 +2700,7 @@
   Tree.prototype.addListener = function (event, listener) {
     addEvent(this.canvasEl, event, listener);
   }
+
   Tree.prototype.getBounds = function () {
     var minx = this.root.startx,
           maxx = this.root.startx,
@@ -2664,17 +2727,21 @@
   }
 
   Tree.prototype.fitInPanel = function () {
-    var bounds = this.getBounds(),
-        minx = bounds[0][0],
-        maxx = bounds[1][0],
-        miny = bounds[0][1],
-        maxy = bounds[1][1],
-        padding = 50,
-        canvasSize = [this.canvas.canvas.width - padding, this.canvas.canvas.height - padding];
+    var bounds = this.getBounds();
+    var minx = bounds[0][0];
+    var maxx = bounds[1][0];
+    var miny = bounds[0][1];
+    var maxy = bounds[1][1];
+    var padding = 50;
+    var canvasSize = [
+      (this.canvas.canvas.width - padding),
+      (this.canvas.canvas.height - padding)
+    ];
+    var requiredZoom = Math.ceil(Math.max((maxy - miny) / canvasSize[1], (maxx - maxy) / canvasSize[0]));
 
-    this.zoom = Math.min(canvasSize[0] / (maxx - minx), canvasSize[1] / (maxy - miny));
-    this.offsety = (maxy + miny) * this.zoom / -2;
-    this.offsetx = (maxx + minx) * this.zoom / -2;
+    this.offsetx = (canvasSize[0] * requiredZoom) + (maxx - minx);
+    this.offsety = (canvasSize[1] * requiredZoom) + (maxy - miny);
+    this.setZoom(requiredZoom * -1);
   }
 
   Tree.prototype.on = Tree.prototype.addListener;
@@ -2728,9 +2795,11 @@
   }
 
   Tree.prototype.resizeToContainer = function () {
-    this.setSize(this.canvasEl.offsetWidth, this.canvasEl.offsetHeight)
+    this.setSize(this.canvasEl.offsetWidth, this.canvasEl.offsetHeight);
+    this.drawn = false;
     this.draw();
-    this.history.resizeTree();
+    // Causing issues at the moment!
+    // this.history.resizeTree();
   }
 
   Tree.prototype.initialiseHistory = function (config) {
