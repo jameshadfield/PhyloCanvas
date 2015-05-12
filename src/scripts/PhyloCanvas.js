@@ -7,6 +7,32 @@
 (function () {
 
   /**
+   * Return backing store pixel ratio of context.
+   *
+   * @param context - The rendering context of HTMl5 canvas.
+   *
+   */
+  function getBackingStorePixelRatio(context) {
+    return (
+      context.backingStorePixelRatio ||
+      context.webkitBackingStorePixelRatio ||
+      context.mozBackingStorePixelRatio ||
+      context.msBackingStorePixelRatio ||
+      context.oBackingStorePixelRatio ||
+      1
+    );
+  }
+
+  // reused object for GC performance
+  var scaledCoordinates = { x: null, y: null };
+  var PIXEL_RATIO = (window.devicePixelRatio || 1) / getBackingStorePixelRatio(this);
+  function scaleByPixelRatio(x, y) {
+    scaledCoordinates.x = x * PIXEL_RATIO;
+    scaledCoordinates.y = y * PIXEL_RATIO;
+    return scaledCoordinates;
+  }
+
+  /**
    * http://phrogz.net/tmp/canvas_zoom_to_cursor.html
    *
    * Adds ctx.getTransform() - returns an SVGMatrix
@@ -63,7 +89,8 @@
     };
     var pt = svg.createSVGPoint();
     ctx.transformedPoint = function (x, y) {
-      pt.x = x; pt.y = y;
+      var coordinates = scaleByPixelRatio(x, y);
+      pt.x = coordinates.x; pt.y = coordinates.y;
       return pt.matrixTransform(xform.inverse());
     };
   }
@@ -96,23 +123,6 @@
       domElement = domElement.offsetParent;
     }
     return xValue;
-  }
-
-  /**
-   * Return backing store pixel ratio of context.
-   *
-   * @param context - The rendering context of HTMl5 canvas.
-   *
-   */
-  function getBackingStorePixelRatio(context) {
-    return (
-      context.backingStorePixelRatio ||
-      context.webkitBackingStorePixelRatio ||
-      context.mozBackingStorePixelRatio ||
-      context.msBackingStorePixelRatio ||
-      context.oBackingStorePixelRatio ||
-      1
-    );
   }
 
   function fireEvent(element, type, params) {
@@ -749,15 +759,12 @@
     },
     mouseover: function (d) { d.style.backgroundColor = '#E2E3DF'; },
     mouseout: function (d) { d.style.backgroundColor = 'transparent'; },
-    open: function (x, y) {
+    open: function (x, y, event) {
       while (this.div.hasChildNodes()) {
         this.div.removeChild(this.div.firstChild);
       }
       for (var i = 0; i < this.elements.length; i++) {
-        var nd = this.tree.root.clicked(
-          this.tree.translateClickX(x),
-          this.tree.translateClickY(y)
-        );
+        var nd = this.tree.root.clicked(x, y);
         if ((nd && ((nd.leaf && !this.elements[i].leaf && this.elements[i].internal) ||
           (!nd.leaf && !this.elements[i].internal && this.elements[i].leaf))) ||
           (!nd && (this.elements[i].leaf || this.elements[i].internal))) {
@@ -779,7 +786,7 @@
         d.style.padding = '0.3em 0.5em 0.3em 0.5em';
         d.style.fontFamily = this.tree.font;
         d.style.fontSize = '8pt';
-        d.addEventListener('click', function(evt) {
+        d.addEventListener('click', function () {
           createHandler(this, 'close');
           this.closed = true;
         });
@@ -790,9 +797,9 @@
         this.div.appendChild(d);
       }
 
-      if (x && y) {
-        this.div.style.top = y + 'px';
-        this.div.style.left = x + 'px';
+      if (event.clientX && event.clientY) {
+        this.div.style.left = event.clientX + 'px';
+        this.div.style.top = event.clientY + 'px';
       } else {
         this.div.style.top = '100px';
         this.div.style.left = '100px';
@@ -1754,7 +1761,6 @@
         }
 
         node.canvas.beginPath();
-        //alert(node.starty);
 
         if (!collapse) {
           node.canvas.moveTo(node.startx, node.starty);
@@ -1842,7 +1848,7 @@
       }
       else if (e.button === 2) {
         e.preventDefault();
-        this.contextMenu.open(e.clientX, e.clientY);
+        this.contextMenu.open(this.offsetx, this.offsety, e);
         this.contextMenu.closed = false;
         this.tooltip.close();
       }
@@ -1923,8 +1929,10 @@
       // this.canvas.save();
 
       if (!this.drawn || forceRedraw) {
-        this.canvas.setTransform(1, 0, 0, 1, 0, 0);
-        this.zoom = 1;
+        // var transform = this.canvas.getTransform();
+        // this.canvas.setTransform(1, 0, 0, 1, 0, 0);
+        // this.setZoom(1 /);
+        // this.canvas.transform(transform.a, transform.b, transform.c, transform.d, transform.e, transform.f);
         this.prerenderers[this.treeType](this);
         if (!forceRedraw) { this.fitInPanel(); }
       }
@@ -2526,7 +2534,7 @@
     scroll: function (event) {
       var delta = event.wheelDelta ? event.wheelDelta / 40 : event.detail ? -event.detail : 0;
       if (delta) {
-        this.setZoom(delta);
+        this.setZoom(Math.pow(1.1, delta));
         this.draw();
       }
       event.preventDefault();
@@ -2633,18 +2641,28 @@
       this.treeTypeChanged(oldType, type);
     },
     setSize: function (width, height) {
+      var transform = this.canvas.getTransform();
+
       this.canvas.canvas.width = width;
       this.canvas.canvas.height = height;
+      this.adjustForPixelRatio();
+
+      this.canvas.setTransform(1, 0, 0, 1, 0, 0);
+      this.canvas.transform(
+        transform.a,
+        transform.b,
+        transform.c,
+        transform.d,
+        transform.e,
+        transform.f
+      );
 
       if (this.navigator) {
         this.navigator.resize();
       }
-      this.adjustForPixelRatio();
     },
-    setZoom: function (clicks) {
+    setZoom: function (factor) {
       var pt = this.canvas.transformedPoint(this.offsetx, this.offsety);
-      var factor = Math.pow(1.1, clicks);
-
       this.canvas.translate(pt.x, pt.y);
       this.zoom *= factor;
       this.canvas.scale(factor, factor);
@@ -2653,28 +2671,6 @@
     toggleLabels: function () {
       this.showLabels = !this.showLabels;
       this.draw();
-    },
-    translateClickX: function (x) {
-      var ratio = (window.devicePixelRatio || 1) / getBackingStorePixelRatio(this.canvas);
-
-      // x = (x - getX(this.canvas.canvas) + window.pageXOffset);
-      x *= ratio;
-      // x -= this.canvas.canvas.width / 2;
-      // x -= this.offsetx;
-      // x = x / this.zoom;
-
-      return this.offsetx;
-    },
-    translateClickY: function (y) {
-      var ratio = (window.devicePixelRatio || 1) / getBackingStorePixelRatio(this.canvas);
-
-      // y = (y - getY(this.canvas.canvas) + window.pageYOffset); // account for positioning and scroll
-      // y *= ratio;
-      // y -= this.canvas.canvas.height / 2;
-      // y -= this.offsety;
-      // y = y / this.zoom;
-
-      return this.offsety;
     },
     viewMetadataColumns: function (metadataColumnArray) {
       this.showMetadata = true;
@@ -2787,7 +2783,7 @@
 
     this.offsetx = (canvasSize[0] * requiredZoom) + (maxx - minx);
     this.offsety = (canvasSize[1] * requiredZoom) + (maxy - miny);
-    this.setZoom(requiredZoom * -1);
+    this.setZoom(Math.pow(1.1, requiredZoom * -1));
   };
 
   Tree.prototype.on = Tree.prototype.addListener;
@@ -2843,7 +2839,7 @@
 
   Tree.prototype.resizeToContainer = function () {
     this.setSize(this.canvasEl.offsetWidth, this.canvasEl.offsetHeight);
-    this.drawn = false;
+    this.zoom *= 1 / this.zoom;
     this.draw();
     // Causing issues at the moment!
     // this.history.resizeTree();
