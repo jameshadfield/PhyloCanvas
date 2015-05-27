@@ -2,6 +2,8 @@ var Angles = require('./utils/constants').Angles;
 var Shapes = require('./utils/constants').Shapes;
 var setupDownloadLink = require('./utils/dom').setupDownloadLink;
 
+var selectedNodes = [];
+
 /**
  * Creates a branch
  *
@@ -454,6 +456,30 @@ Branch.prototype.setSelected = function (selected, applyToChildren) {
     }
   }
   return ids;
+};
+
+Branch.prototype.getSelected = function (selectedParentNodes) {
+  var i;
+  var accumulatedNodes;
+
+  if (!selectedParentNodes) {
+    selectedNodes.length = 0;
+    accumulatedNodes = selectedNodes;
+  } else {
+    accumulatedNodes = selectedParentNodes;
+  }
+
+  if (this.leaf && this.selected && !this.collapsed) {
+    accumulatedNodes.push(this);
+  }
+
+  for (i = 0; i < this.children.length; i++) {
+    this.children[i].getSelected(accumulatedNodes);
+  }
+
+  if (!selectedParentNodes) {
+    return accumulatedNodes;
+  }
 };
 
 Branch.prototype.setHighlighted = function (highlighted) {

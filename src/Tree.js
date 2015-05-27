@@ -77,7 +77,7 @@ function Tree(div, conf) {
 
   addClass(this.canvasEl, 'pc-container');
 
-  //Set up the div and canvas element
+  // Set up the div and canvas element
   if (window.getComputedStyle(this.canvasEl).position === 'static') {
     this.canvasEl.style.position = 'relative';
   }
@@ -114,8 +114,6 @@ function Tree(div, conf) {
   this.tooltip = new Tooltip(this);
 
   this.drawn = false;
-
-  this.selectedNodes = [];
 
   this.zoom = 1;
   this.pickedup = false;
@@ -542,8 +540,6 @@ Tree.prototype.drag = function (event) {
  * Draw the frame
  */
 Tree.prototype.draw = function (forceRedraw) {
-  this.selectedNodes = [];
-
   if (this.maxBranchLength === 0) {
     this.loadError('All branches in the tree are identical.');
     return;
@@ -1418,44 +1414,57 @@ Tree.prototype.addListener = function (event, listener) {
   addEvent(this.canvasEl, event, listener);
 };
 
-Tree.prototype.getBounds = function () {
+Tree.prototype.getBounds = function (leaves) {
   var minx = this.root.startx;
   var maxx = this.root.startx;
   var miny = this.root.starty;
   var maxy = this.root.starty;
+  var index;
+  var leafx;
+  var leafy;
+  var theta;
+  var padding;
 
-  for (var i = this.leaves.length; i--;) {
-    var x = this.leaves[i].centerx;
-    var y = this.leaves[i].centery;
-    var theta = this.leaves[i].angle;
-    var pad = this.leaves[i].getNodeSize()
-              + (this.showLabels ? this.maxLabelLength[this.treeType] + this.leaves[i].getLabelSize() : 0)
-              + (this.showMetadata ?  this.getMetadataColumnHeadings().length * this.metadataXStep : 0);
+  for (index = leaves.length; index--; ) {
+    leafx = leaves[index].centerx;
+    leafy = leaves[index].centery;
+    theta = leaves[index].angle;
+    padding = leaves[index].getNodeSize()
+              + (this.showLabels ? this.maxLabelLength[this.treeType] + leaves[index].getLabelSize() : 0)
+              + (this.showMetadata ? this.getMetadataColumnHeadings().length * this.metadataXStep : 0);
 
-    x = x + (pad * Math.cos(theta));
-    y = y + (pad * Math.sin(theta));
+    leafx = leafx + (padding * Math.cos(theta));
+    leafy = leafy + (padding * Math.sin(theta));
 
-    minx = Math.min(minx, x);
-    maxx = Math.max(maxx, x);
-    miny = Math.min(miny, y);
-    maxy = Math.max(maxy, y);
+    minx = Math.min(minx, leafx);
+    maxx = Math.max(maxx, leafx);
+    miny = Math.min(miny, leafy);
+    maxy = Math.max(maxy, leafy);
   }
   return [ [ minx, miny ], [ maxx, maxy ] ];
 };
 
-Tree.prototype.fitInPanel = function () {
-  var bounds = this.getBounds();
-  var minx = bounds[0][0];
-  var maxx = bounds[1][0];
-  var miny = bounds[0][1];
-  var maxy = bounds[1][1];
+Tree.prototype.fitInPanel = function (bounds) {
   var padding = 50;
   var canvasSize = [
     this.canvas.canvas.width - padding,
     this.canvas.canvas.height - padding
   ];
+  var minx;
+  var maxx;
+  var miny;
+  var maxy;
 
-  this.zoom = Math.min(canvasSize[0] / (maxx - minx), canvasSize[1] / (maxy - miny));
+  bounds = bounds || this.getBounds(this.leaves); // ES6 default param required
+  minx = bounds[0][0];
+  maxx = bounds[1][0];
+  miny = bounds[0][1];
+  maxy = bounds[1][1];
+
+  this.zoom = Math.min(
+    canvasSize[0] / (maxx - minx),
+    canvasSize[1] / (maxy - miny)
+  );
   this.offsety = (maxy + miny) * this.zoom / -2;
   this.offsetx = (maxx + minx) * this.zoom / -2;
 };
@@ -1540,6 +1549,16 @@ Tree.prototype.exportCurrentTreeView = function () {
   if (isDownloadSupported) {
     (window.URL || window.webkitURL).revokeObjectURL(anchor.href);
   }
+};
+
+Tree.prototype.zoomToSelectedNodes = function () {
+  var selectedNodes = this.root.getSelected();
+  if (!selectedNodes.length) {
+    return;
+  }
+  console.dir(this.getBounds(selectedNodes));
+  this.fitInPanel(this.getBounds(selectedNodes));
+  this.draw();
 };
 
 module.exports = Tree;
