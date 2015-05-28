@@ -469,12 +469,14 @@ Branch.prototype.getSelected = function (selectedParentNodes) {
     accumulatedNodes = selectedParentNodes;
   }
 
-  if (this.leaf && this.selected && !this.collapsed) {
+  if (this.selected) {
     accumulatedNodes.push(this);
   }
 
-  for (i = 0; i < this.children.length; i++) {
-    this.children[i].getSelected(accumulatedNodes);
+  if (!this.collapsed) {
+    for (i = 0; i < this.children.length; i++) {
+      this.children[i].getSelected(accumulatedNodes);
+    }
   }
 
   if (!selectedParentNodes) {

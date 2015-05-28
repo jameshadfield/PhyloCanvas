@@ -1415,15 +1415,24 @@ Tree.prototype.addListener = function (event, listener) {
 };
 
 Tree.prototype.getBounds = function (leaves) {
-  var minx = this.root.startx;
-  var maxx = this.root.startx;
-  var miny = this.root.starty;
-  var maxy = this.root.starty;
+  var minx;
+  var maxx;
+  var miny;
+  var maxy;
   var index;
   var leafx;
   var leafy;
   var theta;
   var padding;
+
+  if (!leaves || !leaves.length) {
+    return [ [ 0, 0 ], [ 0, 0 ] ];
+  }
+
+  minx = leaves[0].minx || 0;
+  maxx = leaves[0].maxx || 0;
+  miny = leaves[0].miny || 0;
+  maxy = leaves[0].maxy || 0;
 
   for (index = leaves.length; index--; ) {
     leafx = leaves[index].centerx;
@@ -1444,22 +1453,23 @@ Tree.prototype.getBounds = function (leaves) {
   return [ [ minx, miny ], [ maxx, maxy ] ];
 };
 
-Tree.prototype.fitInPanel = function (bounds) {
-  var padding = 50;
-  var canvasSize = [
-    this.canvas.canvas.width - padding,
-    this.canvas.canvas.height - padding
-  ];
+Tree.prototype.fitInPanel = function (bounds, padding) {
+  var canvasSize;
   var minx;
   var maxx;
   var miny;
   var maxy;
 
+  padding = padding || 50; // ES6 default param required
   bounds = bounds || this.getBounds(this.leaves); // ES6 default param required
   minx = bounds[0][0];
   maxx = bounds[1][0];
   miny = bounds[0][1];
   maxy = bounds[1][1];
+  canvasSize = [
+    this.canvas.canvas.width - padding,
+    this.canvas.canvas.height - padding
+  ];
 
   this.zoom = Math.min(
     canvasSize[0] / (maxx - minx),
@@ -1556,8 +1566,7 @@ Tree.prototype.zoomToSelectedNodes = function () {
   if (!selectedNodes.length) {
     return;
   }
-  console.dir(this.getBounds(selectedNodes));
-  this.fitInPanel(this.getBounds(selectedNodes));
+  this.fitInPanel(this.getBounds(selectedNodes), 200);
   this.draw();
 };
 
