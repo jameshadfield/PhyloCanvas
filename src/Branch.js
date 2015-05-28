@@ -463,6 +463,7 @@ Branch.prototype.getSelected = function (selectedParentNodes) {
   var accumulatedNodes;
 
   if (!selectedParentNodes) {
+    // reusing module-scope array to reduce garbage creation
     selectedNodes.length = 0;
     accumulatedNodes = selectedNodes;
   } else {
@@ -479,6 +480,7 @@ Branch.prototype.getSelected = function (selectedParentNodes) {
     }
   }
 
+  // only returns when search surfaces to first iteration
   if (!selectedParentNodes) {
     return accumulatedNodes;
   }

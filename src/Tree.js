@@ -16,6 +16,8 @@ var addEvent = require('./utils/events').addEvent;
 var getBackingStorePixelRatio =
   require('./utils/canvas').getBackingStorePixelRatio;
 
+var boundsUtils = require('./utils/bounds');
+
 /**
  * The instance of a PhyloCanvas Widget
  *
@@ -1415,68 +1417,34 @@ Tree.prototype.addListener = function (event, listener) {
 };
 
 Tree.prototype.getBounds = function (leaves) {
-  var minx;
-  var maxx;
-  var miny;
-  var maxy;
-  var index;
-  var leafx;
-  var leafy;
-  var theta;
-  var padding;
-
   if (!leaves || !leaves.length) {
-    return [ [ 0, 0 ], [ 0, 0 ] ];
+    return boundsUtils.resetBounds();
   }
+  boundsUtils.setBounds(leaves[0]);
+  return boundsUtils.getBounds(leaves, this);
+};
 
-  minx = leaves[0].minx || 0;
-  maxx = leaves[0].maxx || 0;
-  miny = leaves[0].miny || 0;
-  maxy = leaves[0].maxy || 0;
-
-  for (index = leaves.length; index--; ) {
-    leafx = leaves[index].centerx;
-    leafy = leaves[index].centery;
-    theta = leaves[index].angle;
-    padding = leaves[index].getNodeSize()
-              + (this.showLabels ? this.maxLabelLength[this.treeType] + leaves[index].getLabelSize() : 0)
-              + (this.showMetadata ? this.getMetadataColumnHeadings().length * this.metadataXStep : 0);
-
-    leafx = leafx + (padding * Math.cos(theta));
-    leafy = leafy + (padding * Math.sin(theta));
-
-    minx = Math.min(minx, leafx);
-    maxx = Math.max(maxx, leafx);
-    miny = Math.min(miny, leafy);
-    maxy = Math.max(maxy, leafy);
-  }
-  return [ [ minx, miny ], [ maxx, maxy ] ];
+Tree.prototype.getGlobalBounds = function () {
+  boundsUtils.resetBounds();
+  return boundsUtils.getBounds(this.leaves, this);
 };
 
 Tree.prototype.fitInPanel = function (bounds, padding) {
   var canvasSize;
-  var minx;
-  var maxx;
-  var miny;
-  var maxy;
 
   padding = padding || 50; // ES6 default param required
-  bounds = bounds || this.getBounds(this.leaves); // ES6 default param required
-  minx = bounds[0][0];
-  maxx = bounds[1][0];
-  miny = bounds[0][1];
-  maxy = bounds[1][1];
+  bounds = bounds || this.getGlobalBounds(); // ES6 default param required
   canvasSize = [
-    this.canvas.canvas.width - padding,
-    this.canvas.canvas.height - padding
+    this.canvas.canvas.width - padding * 2,
+    this.canvas.canvas.height - padding * 2
   ];
 
   this.zoom = Math.min(
-    canvasSize[0] / (maxx - minx),
-    canvasSize[1] / (maxy - miny)
+    canvasSize[0] / (bounds.maxx - bounds.minx),
+    canvasSize[1] / (bounds.maxy - bounds.miny)
   );
-  this.offsety = (maxy + miny) * this.zoom / -2;
-  this.offsetx = (maxx + minx) * this.zoom / -2;
+  this.offsetx = (bounds.maxx + bounds.minx) * this.zoom / -2;
+  this.offsety = (bounds.maxy + bounds.miny) * this.zoom / -2;
 };
 
 Tree.prototype.on = Tree.prototype.addListener;
@@ -1566,7 +1534,7 @@ Tree.prototype.zoomToSelectedNodes = function () {
   if (!selectedNodes.length) {
     return;
   }
-  this.fitInPanel(this.getBounds(selectedNodes), 200);
+  this.fitInPanel(this.getBounds(selectedNodes), 100);
   this.draw();
 };
 
