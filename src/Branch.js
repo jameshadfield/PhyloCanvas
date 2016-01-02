@@ -352,17 +352,17 @@ export default class Branch {
   }
 
   drawNode() {
-    var nodeRadius = this.getRadius();
+    const nodeRadius = this.getRadius();
     /**
      * theta = translation to center of node... ensures that the node edge is
      * at the end of the branch so the branches don't look shorter than  they
      * should
      */
-    var theta = nodeRadius;
+    const theta = nodeRadius;
 
-    var centerX = this.leaf ?
+    const centerX = this.leaf ?
       (theta * Math.cos(this.angle)) + this.centerx : this.centerx;
-    var centerY = this.leaf ?
+    const centerY = this.leaf ?
       (theta * Math.sin(this.angle)) + this.centery : this.centery;
 
     this.setNodeDimensions(centerX, centerY, nodeRadius);
@@ -535,10 +535,6 @@ export default class Branch {
    * Get the colour(s) of the branch itself.
    */
   getColour(specifiedColour) {
-    if (this.selected) {
-      return this.tree.selectedColour;
-    }
-
     return specifiedColour || this.colour || this.tree.branchColour;
   }
 
@@ -552,10 +548,6 @@ export default class Branch {
   }
 
   getTextColour() {
-    if (this.selected) {
-      return this.tree.selectedColour;
-    }
-
     if (this.isHighlighted) {
       return this.tree.highlightColour;
     }

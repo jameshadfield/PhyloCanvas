@@ -111,11 +111,10 @@ export default class Tree {
 
     this.offsetx = this.canvas.canvas.width / 2;
     this.offsety = this.canvas.canvas.height / 2;
-    this.selectedColour = 'rgba(49,151,245,1)';
+    this.selectedAlpha = 0.2;
     this.highlightColour = 'rgba(49,151,245,1)';
     this.highlightWidth = 4;
     this.highlightSize = 2;
-    this.selectedNodeSizeIncrease = 0;
     this.branchColour = 'rgba(0,0,0,1)';
     this.branchScalar = 1.0;
     this.padding = conf.padding || 50;
@@ -172,6 +171,11 @@ export default class Tree {
      * Maximum length of label for each tree type.
      */
     this.maxLabelLength = {};
+
+    /**
+     * Tracks the number of branches with a given flag
+     */
+    this.presentFlags = {};
   }
 
   get alignLabels() {
@@ -218,10 +222,8 @@ export default class Tree {
           node.cascadeFlag('selected', true);
           nodeIds = node.getChildProperties('id');
         }
-        this.draw();
       } else if (this.unselectOnClickAway && !this.dragging) {
         this.root.cascadeFlag('selected', false);
-        this.draw();
       }
 
       if (!this.pickedup) {
@@ -229,6 +231,7 @@ export default class Tree {
       }
 
       this.nodesUpdated(nodeIds, 'selected');
+      this.draw();
     }
   }
 
@@ -308,8 +311,10 @@ export default class Tree {
     this.canvas.strokeStyle = this.branchColour;
     this.canvas.save();
 
-    this.canvas.translate((this.canvas.canvas.width / 2) / getBackingStorePixelRatio(this.canvas),
-      (this.canvas.canvas.height / 2) / getBackingStorePixelRatio(this.canvas));
+    this.canvas.translate(
+      (this.canvas.canvas.width / 2) / getBackingStorePixelRatio(this.canvas),
+      (this.canvas.canvas.height / 2) / getBackingStorePixelRatio(this.canvas)
+    );
 
     if (!this.drawn || forceRedraw) {
       this.prerenderer.run(this);
@@ -322,6 +327,7 @@ export default class Tree {
 
     this.branchRenderer.render(this, this.root);
 
+    this.canvas.globalAlpha = 1;
     this.highlighters.forEach(render => render());
 
     // Making default collapsed false so that it will collapse on initial load only
@@ -698,6 +704,7 @@ export default class Tree {
   }
 
   nodesUpdated(nodeIds, property) {
+    this.presentFlags[property] = nodeIds.length;
     fireEvent(this.containerElement, 'updated', { nodeIds, property });
   }
 

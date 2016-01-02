@@ -8,14 +8,14 @@ function BranchRenderer(options) {
 }
 
 BranchRenderer.prototype.render = function (tree, branch, collapse) {
-  var i;
   if (collapse || !branch) return;
 
-  if (branch.selected) {
-    branch.canvas.fillStyle = tree.selectedColour;
-  } else {
-    branch.canvas.fillStyle = branch.colour;
+  if (tree.presentFlags.selected) {
+    const showSelected = branch.selected &&
+      (branch.leaf || !branch.parent || branch.parent.selected);
+    tree.canvas.globalAlpha = showSelected ? 1 : tree.selectedAlpha;
   }
+
   branch.canvas.strokeStyle = branch.getColour();
 
   this.draw(tree, branch);
@@ -26,7 +26,7 @@ BranchRenderer.prototype.render = function (tree, branch, collapse) {
 
   branch.drawNode();
 
-  for (i = 0; i < branch.children.length; i++) {
+  for (let i = 0; i < branch.children.length; i++) {
     if (this.prepareChild) {
       this.prepareChild(branch, branch.children[i]);
     }
