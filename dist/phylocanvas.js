@@ -279,11 +279,10 @@ return /******/ (function(modules) { // webpackBootstrap
 
 	    this.offsetx = this.canvas.canvas.width / 2;
 	    this.offsety = this.canvas.canvas.height / 2;
-	    this.selectedColour = 'rgba(49,151,245,1)';
+	    this.unselectedAlpha = 0.2;
 	    this.highlightColour = 'rgba(49,151,245,1)';
 	    this.highlightWidth = 4;
 	    this.highlightSize = 2;
-	    this.selectedNodeSizeIncrease = 0;
 	    this.branchColour = 'rgba(0,0,0,1)';
 	    this.branchScalar = 1.0;
 	    this.padding = conf.padding || 50;
@@ -340,6 +339,11 @@ return /******/ (function(modules) { // webpackBootstrap
 	     * Maximum length of label for each tree type.
 	     */
 	    this.maxLabelLength = {};
+
+	    /**
+	     * Tracks the number of branches with a given flag
+	     */
+	    this.presentFlags = {};
 	  }
 
 	  _createClass(Tree, [{
@@ -384,10 +388,8 @@ return /******/ (function(modules) { // webpackBootstrap
 	            node.cascadeFlag('selected', true);
 	            nodeIds = node.getChildProperties('id');
 	          }
-	          this.draw();
 	        } else if (this.unselectOnClickAway && !this.dragging) {
 	          this.root.cascadeFlag('selected', false);
-	          this.draw();
 	        }
 
 	        if (!this.pickedup) {
@@ -395,6 +397,7 @@ return /******/ (function(modules) { // webpackBootstrap
 	        }
 
 	        this.nodesUpdated(nodeIds, 'selected');
+	        this.draw();
 	      }
 	    }
 	  }, {
@@ -499,6 +502,7 @@ return /******/ (function(modules) { // webpackBootstrap
 
 	      this.branchRenderer.render(this, this.root);
 
+	      this.canvas.globalAlpha = 1;
 	      this.highlighters.forEach(function (render) {
 	        return render();
 	      });
@@ -1032,6 +1036,7 @@ return /******/ (function(modules) { // webpackBootstrap
 	  }, {
 	    key: 'nodesUpdated',
 	    value: function nodesUpdated(nodeIds, property) {
+	      this.presentFlags[property] = nodeIds.length;
 	      fireEvent(this.containerElement, 'updated', { nodeIds: nodeIds, property: property });
 	    }
 	  }, {
@@ -1793,10 +1798,6 @@ return /******/ (function(modules) { // webpackBootstrap
 	  }, {
 	    key: 'getColour',
 	    value: function getColour(specifiedColour) {
-	      if (this.selected) {
-	        return this.tree.selectedColour;
-	      }
-
 	      return specifiedColour || this.colour || this.tree.branchColour;
 	    }
 	  }, {
@@ -1816,10 +1817,6 @@ return /******/ (function(modules) { // webpackBootstrap
 	  }, {
 	    key: 'getTextColour',
 	    value: function getTextColour() {
-	      if (this.selected) {
-	        return this.tree.selectedColour;
-	      }
-
 	      if (this.isHighlighted) {
 	        return this.tree.highlightColour;
 	      }
@@ -2477,14 +2474,13 @@ return /******/ (function(modules) { // webpackBootstrap
 	}
 
 	BranchRenderer.prototype.render = function (tree, branch, collapse) {
-	  var i;
 	  if (collapse || !branch) return;
 
-	  if (branch.selected) {
-	    branch.canvas.fillStyle = tree.selectedColour;
-	  } else {
-	    branch.canvas.fillStyle = branch.colour;
+	  if (tree.presentFlags.selected) {
+	    var showSelected = branch.selected && (branch.leaf || !branch.parent || branch.parent.selected);
+	    tree.canvas.globalAlpha = showSelected ? 1 : tree.unselectedAlpha;
 	  }
+
 	  branch.canvas.strokeStyle = branch.getColour();
 
 	  this.draw(tree, branch);
@@ -2495,7 +2491,7 @@ return /******/ (function(modules) { // webpackBootstrap
 
 	  branch.drawNode();
 
-	  for (i = 0; i < branch.children.length; i++) {
+	  for (var i = 0; i < branch.children.length; i++) {
 	    if (this.prepareChild) {
 	      this.prepareChild(branch, branch.children[i]);
 	    }

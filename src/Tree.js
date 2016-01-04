@@ -111,7 +111,7 @@ export default class Tree {
 
     this.offsetx = this.canvas.canvas.width / 2;
     this.offsety = this.canvas.canvas.height / 2;
-    this.selectedAlpha = 0.2;
+    this.unselectedAlpha = 0.2;
     this.highlightColour = 'rgba(49,151,245,1)';
     this.highlightWidth = 4;
     this.highlightSize = 2;

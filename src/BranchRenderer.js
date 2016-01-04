@@ -13,7 +13,7 @@ BranchRenderer.prototype.render = function (tree, branch, collapse) {
   if (tree.presentFlags.selected) {
     const showSelected = branch.selected &&
       (branch.leaf || !branch.parent || branch.parent.selected);
-    tree.canvas.globalAlpha = showSelected ? 1 : tree.selectedAlpha;
+    tree.canvas.globalAlpha = showSelected ? 1 : tree.unselectedAlpha;
   }
 
   branch.canvas.strokeStyle = branch.getColour();
