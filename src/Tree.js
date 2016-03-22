@@ -84,7 +84,7 @@ export default class Tree {
     this.highlighters = [];
 
     this.zoom = 1;
-    this.zoomFactor = 0.2;
+    this.zoomFactor = 0.1;
     this.disableZoom = false;
 
     this.fillCanvas = false;
@@ -329,9 +329,9 @@ export default class Tree {
   }
 
   /**
-   * Draw the frame
+   * Draw the frame - Had to add svg bool to make svg output work - Simon
    */
-  draw(forceRedraw) {
+  draw(forceRedraw, svg = false) {
     this.highlighters.length = 0;
 
     if (this.maxBranchLength === 0) {
@@ -341,12 +341,18 @@ export default class Tree {
 
     this.canvas.restore();
 
-    this.canvas.clearRect(0, 0, this.canvas.canvas.width, this.canvas.canvas.height);
+    // Had to add this to make svg output work. cearRect clears the clip mask applied in Phandango
+    if (svg === false) {
+      this.canvas.clearRect(0, 0, this.canvas.canvas.width, this.canvas.canvas.height);
+    }
+    // End of Simon's additions
+
     this.canvas.lineCap = 'round';
     this.canvas.lineJoin = 'round';
 
     this.canvas.strokeStyle = this.branchColour;
     this.canvas.save();
+
 
     if (!this.drawn || forceRedraw) {
       this.prerenderer.run(this);
@@ -363,6 +369,12 @@ export default class Tree {
     this.highlighters.forEach(render => render());
 
     this.drawn = true;
+
+    // Had to add this to make svg output work. No idea why I can't restore outside of phylocanvas, but it doesn't work
+    if (svg === true) {
+      this.canvas.restore();
+    }
+    // End of Simon's additions
   }
 
   drop() {

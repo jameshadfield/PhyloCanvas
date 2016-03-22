@@ -26,7 +26,8 @@
   "scripts": {
     "start": "webpack-dev-server --config webpack-dev-server.config.js --hot --inline --host 0.0.0.0",
     "test": "webpack-dev-server --config webpack-test-server.config.js --port 8081",
-    "build": "webpack"
+    "build": "webpack",
+    "watch": "webpack --progress --colors --watch"
   },
   "dependencies": {},
   "devDependencies": {

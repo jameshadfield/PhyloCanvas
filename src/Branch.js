@@ -325,11 +325,13 @@ export default class Branch {
       this.drawLabelConnector();
     }
 
-    canvas.save();
+    // the following removed as it threw errors trying to save as SVG
+    // clearly not ideal
+    // ** TODO **
 
-    nodeRenderers[this.nodeShape](canvas, this.getRadius(), this.getLeafStyle());
-
-    canvas.restore();
+    // canvas.save();
+    // nodeRenderers[this.nodeShape](canvas, this.getRadius(), this.getLeafStyle());
+    // canvas.restore();
 
     if (this.tree.showLabels || (this.tree.hoverLabel && this.isHighlighted)) {
       this.drawLabel();

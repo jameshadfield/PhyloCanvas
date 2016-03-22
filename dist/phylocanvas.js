@@ -141,11 +141,11 @@ return /******/ (function(modules) { // webpackBootstrap
 
 	'use strict';
 
+	var _createClass = function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; }();
+
 	Object.defineProperty(exports, "__esModule", {
 	  value: true
 	});
-
-	var _createClass = function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; }();
 
 	var _utils = __webpack_require__(2);
 
@@ -256,7 +256,7 @@ return /******/ (function(modules) { // webpackBootstrap
 	    this.highlighters = [];
 
 	    this.zoom = 1;
-	    this.zoomFactor = 0.2;
+	    this.zoomFactor = 0.1;
 	    this.disableZoom = false;
 
 	    this.fillCanvas = false;
@@ -511,12 +511,14 @@ return /******/ (function(modules) { // webpackBootstrap
 	    }
 
 	    /**
-	     * Draw the frame
+	     * Draw the frame - Had to add svg bool to make svg output work - Simon
 	     */
 
 	  }, {
 	    key: 'draw',
 	    value: function draw(forceRedraw) {
+	      var svg = arguments.length <= 1 || arguments[1] === undefined ? false : arguments[1];
+
 	      this.highlighters.length = 0;
 
 	      if (this.maxBranchLength === 0) {
@@ -526,7 +528,12 @@ return /******/ (function(modules) { // webpackBootstrap
 
 	      this.canvas.restore();
 
-	      this.canvas.clearRect(0, 0, this.canvas.canvas.width, this.canvas.canvas.height);
+	      // Had to add this to make svg output work. cearRect clears the clip mask applied in Phandango
+	      if (svg === false) {
+	        this.canvas.clearRect(0, 0, this.canvas.canvas.width, this.canvas.canvas.height);
+	      }
+	      // End of Simon's additions
+
 	      this.canvas.lineCap = 'round';
 	      this.canvas.lineJoin = 'round';
 
@@ -550,6 +557,12 @@ return /******/ (function(modules) { // webpackBootstrap
 	      });
 
 	      this.drawn = true;
+
+	      // Had to add this to make svg output work. No idea why I can't restore outside of phylocanvas, but it doesn't work
+	      if (svg === true) {
+	        this.canvas.restore();
+	      }
+	      // End of Simon's additions
 	    }
 	  }, {
 	    key: 'drop',
@@ -627,9 +640,9 @@ return /******/ (function(modules) { // webpackBootstrap
 
 	      try {
 	        for (var _iterator3 = leaves[Symbol.iterator](), _step3; !(_iteratorNormalCompletion3 = (_step3 = _iterator3.next()).done); _iteratorNormalCompletion3 = true) {
-	          var _leaf = _step3.value;
+	          var leaf = _step3.value;
 
-	          _leaf[property] = value;
+	          leaf[property] = value;
 	        }
 	      } catch (err) {
 	        _didIteratorError3 = true;
@@ -1124,26 +1137,50 @@ return /******/ (function(modules) { // webpackBootstrap
 	  }, {
 	    key: 'getBounds',
 	    value: function getBounds() {
-	      var minx = this.root.startx;
-	      var maxx = this.root.startx;
-	      var miny = this.root.starty;
-	      var maxy = this.root.starty;
+	      var leaves = arguments.length <= 0 || arguments[0] === undefined ? this.leaves : arguments[0];
 
-	      for (var i = this.leaves.length; i--;) {
-	        var bounds = this.leaves[i].getBounds();
+	      var minx = leaves[0].startx;
+	      var maxx = leaves[0].startx;
+	      var miny = leaves[0].starty;
+	      var maxy = leaves[0].starty;
 
-	        minx = Math.min(minx, bounds.minx);
-	        maxx = Math.max(maxx, bounds.maxx);
-	        miny = Math.min(miny, bounds.miny);
-	        maxy = Math.max(maxy, bounds.maxy);
+	      var _iteratorNormalCompletion6 = true;
+	      var _didIteratorError6 = false;
+	      var _iteratorError6 = undefined;
+
+	      try {
+	        for (var _iterator6 = leaves[Symbol.iterator](), _step6; !(_iteratorNormalCompletion6 = (_step6 = _iterator6.next()).done); _iteratorNormalCompletion6 = true) {
+	          var leaf = _step6.value;
+
+	          var bounds = leaf.getBounds();
+	          minx = Math.min(minx, bounds.minx);
+	          maxx = Math.max(maxx, bounds.maxx);
+	          miny = Math.min(miny, bounds.miny);
+	          maxy = Math.max(maxy, bounds.maxy);
+	        }
+	      } catch (err) {
+	        _didIteratorError6 = true;
+	        _iteratorError6 = err;
+	      } finally {
+	        try {
+	          if (!_iteratorNormalCompletion6 && _iterator6.return) {
+	            _iterator6.return();
+	          }
+	        } finally {
+	          if (_didIteratorError6) {
+	            throw _iteratorError6;
+	          }
+	        }
 	      }
+
 	      return [[minx, miny], [maxx, maxy]];
 	    }
 	  }, {
 	    key: 'fitInPanel',
 	    value: function fitInPanel() {
+	      var bounds = arguments.length <= 0 || arguments[0] === undefined ? this.getBounds() : arguments[0];
+
 	      var canvasSize = [this.canvas.canvas.width - this.padding * 2, this.canvas.canvas.height - this.padding * 2];
-	      var bounds = this.getBounds();
 	      var treeSize = [bounds[1][0] - bounds[0][0], bounds[1][1] - bounds[0][1]];
 	      var pixelRatio = getPixelRatio(this.canvas);
 	      var xZoomRatio = canvasSize[0] / treeSize[0];
@@ -1185,28 +1222,28 @@ return /******/ (function(modules) { // webpackBootstrap
 	      if (!this.originalTree.branches) return;
 
 	      this.branches = this.originalTree.branches;
-	      var _iteratorNormalCompletion6 = true;
-	      var _didIteratorError6 = false;
-	      var _iteratorError6 = undefined;
+	      var _iteratorNormalCompletion7 = true;
+	      var _didIteratorError7 = false;
+	      var _iteratorError7 = undefined;
 
 	      try {
-	        for (var _iterator6 = Object.keys(this.originalTree.branchLengths)[Symbol.iterator](), _step6; !(_iteratorNormalCompletion6 = (_step6 = _iterator6.next()).done); _iteratorNormalCompletion6 = true) {
-	          var n = _step6.value;
+	        for (var _iterator7 = Object.keys(this.originalTree.branchLengths)[Symbol.iterator](), _step7; !(_iteratorNormalCompletion7 = (_step7 = _iterator7.next()).done); _iteratorNormalCompletion7 = true) {
+	          var n = _step7.value;
 
 	          this.branches[n].branchLength = this.originalTree.branchLengths[n];
 	          this.branches[n].parent = this.originalTree.parents[n];
 	        }
 	      } catch (err) {
-	        _didIteratorError6 = true;
-	        _iteratorError6 = err;
+	        _didIteratorError7 = true;
+	        _iteratorError7 = err;
 	      } finally {
 	        try {
-	          if (!_iteratorNormalCompletion6 && _iterator6.return) {
-	            _iterator6.return();
+	          if (!_iteratorNormalCompletion7 && _iterator7.return) {
+	            _iterator7.return();
 	          }
 	        } finally {
-	          if (_didIteratorError6) {
-	            throw _iteratorError6;
+	          if (_didIteratorError7) {
+	            throw _iteratorError7;
 	          }
 	        }
 	      }
@@ -1253,7 +1290,6 @@ return /******/ (function(modules) { // webpackBootstrap
 	}();
 
 	exports.default = Tree;
-
 
 	Tree.prototype.on = Tree.prototype.addListener;
 
@@ -1453,12 +1489,11 @@ return /******/ (function(modules) { // webpackBootstrap
 
 	'use strict';
 
+	var _typeof = typeof Symbol === "function" && typeof Symbol.iterator === "symbol" ? function (obj) { return typeof obj; } : function (obj) { return obj && typeof Symbol === "function" && obj.constructor === Symbol ? "symbol" : typeof obj; };
+
 	Object.defineProperty(exports, "__esModule", {
 	  value: true
 	});
-
-	var _typeof = typeof Symbol === "function" && typeof Symbol.iterator === "symbol" ? function (obj) { return typeof obj; } : function (obj) { return obj && typeof Symbol === "function" && obj.constructor === Symbol ? "symbol" : typeof obj; };
-
 	exports.preventDefault = preventDefault;
 	exports.fireEvent = fireEvent;
 	exports.addEvent = addEvent;
@@ -1603,11 +1638,11 @@ return /******/ (function(modules) { // webpackBootstrap
 
 	'use strict';
 
+	var _createClass = function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; }();
+
 	Object.defineProperty(exports, "__esModule", {
 	  value: true
 	});
-
-	var _createClass = function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; }();
 
 	var _utils = __webpack_require__(2);
 
@@ -1819,7 +1854,6 @@ return /******/ (function(modules) { // webpackBootstrap
 	   * @static
 	   */
 
-
 	  _createClass(Branch, [{
 	    key: 'clicked',
 	    value: function clicked(x, y) {
@@ -1941,16 +1975,17 @@ return /******/ (function(modules) { // webpackBootstrap
 	      var alignLabels = _tree2.alignLabels;
 	      var canvas = _tree2.canvas;
 
-
 	      if (alignLabels) {
 	        this.drawLabelConnector();
 	      }
 
-	      canvas.save();
+	      // the following removed as it threw errors trying to save as SVG
+	      // clearly not ideal
+	      // ** TODO **
 
-	      _nodeRenderers2.default[this.nodeShape](canvas, this.getRadius(), this.getLeafStyle());
-
-	      canvas.restore();
+	      // canvas.save();
+	      // nodeRenderers[this.nodeShape](canvas, this.getRadius(), this.getLeafStyle());
+	      // canvas.restore();
 
 	      if (this.tree.showLabels || this.tree.hoverLabel && this.isHighlighted) {
 	        this.drawLabel();
@@ -2100,6 +2135,9 @@ return /******/ (function(modules) { // webpackBootstrap
 	  }, {
 	    key: 'redrawTreeFromBranch',
 	    value: function redrawTreeFromBranch() {
+	      if (this.collapsed) {
+	        this.expand();
+	      }
 	      this.tree.redrawFromBranch(this);
 	    }
 	  }, {
@@ -2312,7 +2350,9 @@ return /******/ (function(modules) { // webpackBootstrap
 	  }, {
 	    key: 'getLabelStartX',
 	    value: function getLabelStartX() {
-	      var _getLeafStyle = this.getLeafStyle();
+	      var includeZoom = arguments.length <= 0 || arguments[0] === undefined ? true : arguments[0];
+
+	      var _getLeafStyle = this.getLeafStyle(includeZoom);
 
 	      var lineWidth = _getLeafStyle.lineWidth;
 
@@ -2321,33 +2361,39 @@ return /******/ (function(modules) { // webpackBootstrap
 	      var offset = this.getDiameter();
 
 	      if (this.isHighlighted && !hasLabelConnector) {
-	        offset += this.getHighlightSize() - this.getRadius();
+	        offset += this.getHighlightSize(includeZoom) - this.getRadius();
 	      }
 
 	      if (!this.isHighlighted && !hasLabelConnector) {
 	        offset += lineWidth / 2;
 	      }
 
-	      return offset + Math.min(this.tree.labelPadding, this.tree.labelPadding / this.tree.zoom);
+	      return offset + Math.min(this.tree.labelPadding, this.tree.labelPadding / (includeZoom ? this.tree.zoom : 1));
 	    }
 	  }, {
 	    key: 'getHighlightLineWidth',
 	    value: function getHighlightLineWidth() {
-	      return this.tree.highlightWidth / this.tree.zoom;
+	      var includeZoom = arguments.length <= 0 || arguments[0] === undefined ? true : arguments[0];
+
+	      return this.tree.highlightWidth / (includeZoom ? this.tree.zoom : 1);
 	    }
 	  }, {
 	    key: 'getHighlightRadius',
 	    value: function getHighlightRadius() {
-	      var offset = this.getHighlightLineWidth() * this.tree.highlightSize;
+	      var includeZoom = arguments.length <= 0 || arguments[0] === undefined ? true : arguments[0];
 
-	      offset += this.getLeafStyle().lineWidth / this.tree.highlightSize;
+	      var offset = this.getHighlightLineWidth(includeZoom) * this.tree.highlightSize;
+
+	      offset += this.getLeafStyle(includeZoom).lineWidth / this.tree.highlightSize;
 
 	      return this.leaf ? this.getRadius() + offset : offset * 0.666;
 	    }
 	  }, {
 	    key: 'getHighlightSize',
 	    value: function getHighlightSize() {
-	      return this.getHighlightRadius() + this.getHighlightLineWidth();
+	      var includeZoom = arguments.length <= 0 || arguments[0] === undefined ? true : arguments[0];
+
+	      return this.getHighlightRadius(includeZoom) + this.getHighlightLineWidth(includeZoom);
 	    }
 	  }, {
 	    key: 'rotate',
@@ -2398,10 +2444,12 @@ return /******/ (function(modules) { // webpackBootstrap
 	  }, {
 	    key: 'getTotalLength',
 	    value: function getTotalLength() {
+	      var includeZoom = arguments.length <= 0 || arguments[0] === undefined ? true : arguments[0];
+
 	      var length = this.getRadius();
 
 	      if (this.tree.showLabels || this.tree.hoverLabel && this.isHighlighted) {
-	        length += this.getLabelStartX() + this.getLabelSize();
+	        length += this.getLabelStartX(includeZoom) + this.getLabelSize();
 	      }
 
 	      return length;
@@ -2414,12 +2462,12 @@ return /******/ (function(modules) { // webpackBootstrap
 	      var x = tree.alignLabels ? tree.labelAlign.getX(this) : this.centerx;
 	      var y = tree.alignLabels ? tree.labelAlign.getY(this) : this.centery;
 	      var nodeSize = this.getRadius();
-	      var totalLength = this.getTotalLength();
+	      var totalLength = this.getTotalLength(false);
 
-	      var minx = void 0;
-	      var maxx = void 0;
-	      var miny = void 0;
-	      var maxy = void 0;
+	      var minx = undefined;
+	      var maxx = undefined;
+	      var miny = undefined;
+	      var maxy = undefined;
 	      if (this.angle > Angles.QUARTER && this.angle < Angles.HALF + Angles.QUARTER) {
 	        minx = x + totalLength * Math.cos(this.angle);
 	        miny = y + totalLength * Math.sin(this.angle);
@@ -2433,16 +2481,18 @@ return /******/ (function(modules) { // webpackBootstrap
 	      }
 
 	      // uses a caching object to reduce garbage
-	      _bounds.minx = Math.min(minx, maxx, x - this.getHighlightSize());
-	      _bounds.miny = Math.min(miny, maxy, y - this.getHighlightSize());
-	      _bounds.maxx = Math.max(minx, maxx, x + this.getHighlightSize());
-	      _bounds.maxy = Math.max(miny, maxy, y + this.getHighlightSize());
+	      var step = tree.prerenderer.getStep(tree);
+	      _bounds.minx = Math.min(minx, maxx, x - step);
+	      _bounds.miny = Math.min(miny, maxy, y - step);
+	      _bounds.maxx = Math.max(minx, maxx, x + step);
+	      _bounds.maxy = Math.max(miny, maxy, y + step);
 
 	      return _bounds;
 	    }
 	  }, {
 	    key: 'getLeafStyle',
 	    value: function getLeafStyle() {
+	      var includeZoom = arguments.length <= 0 || arguments[0] === undefined ? true : arguments[0];
 	      var _leafStyle2 = this.leafStyle;
 	      var strokeStyle = _leafStyle2.strokeStyle;
 	      var fillStyle = _leafStyle2.fillStyle;
@@ -2455,7 +2505,7 @@ return /******/ (function(modules) { // webpackBootstrap
 
 	      var lineWidth = typeof this.leafStyle.lineWidth !== 'undefined' ? this.leafStyle.lineWidth : this.tree.lineWidth;
 
-	      _leafStyle.lineWidth = lineWidth / zoom;
+	      _leafStyle.lineWidth = lineWidth / (includeZoom ? zoom : 1);
 
 	      return _leafStyle;
 	    }
@@ -2490,7 +2540,6 @@ return /******/ (function(modules) { // webpackBootstrap
 	var _utils = __webpack_require__(2);
 
 	var Angles = _utils.constants.Angles;
-
 
 	function drawConnector(canvas, connectingOffset) {
 	  canvas.beginPath();
@@ -2911,11 +2960,11 @@ return /******/ (function(modules) { // webpackBootstrap
 
 	"use strict";
 
+	var _createClass = function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; }();
+
 	Object.defineProperty(exports, "__esModule", {
 	  value: true
 	});
-
-	var _createClass = function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; }();
 
 	function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
 
@@ -3246,7 +3295,6 @@ return /******/ (function(modules) { // webpackBootstrap
 
 	var Angles = _utils.constants.Angles;
 
-
 	function prerenderNodes(tree, node) {
 	  if (node.parent) {
 	    node.startx = node.parent.centerx;
@@ -3563,11 +3611,11 @@ return /******/ (function(modules) { // webpackBootstrap
 
 	"use strict";
 
+	var _createClass = function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; }();
+
 	Object.defineProperty(exports, "__esModule", {
 	  value: true
 	});
-
-	var _createClass = function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; }();
 
 	function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
 
@@ -3624,7 +3672,7 @@ return /******/ (function(modules) { // webpackBootstrap
 
 	var format = 'newick';
 	var fileExtension = /\.nwk$/;
-	var validator = /^[\w\W\.\*\:(\),-\/]+;\s?$/gi;
+	var validator = /^[\w\W\.\*\:(\),-\/]+;?\s*$/gi;
 
 	function isTerminatingChar(terminatingChar) {
 	  return this === terminatingChar;
@@ -3756,7 +3804,7 @@ return /******/ (function(modules) { // webpackBootstrap
 	  var currentNode = root;
 
 	  for (var i = 0; i < cleanString.length; i++) {
-	    var node = void 0;
+	    var node = undefined;
 	    switch (cleanString[i]) {
 	      case '(':
 	        // new Child
@@ -3850,9 +3898,9 @@ return /******/ (function(modules) { // webpackBootstrap
 	  var tArr = treeSection.split('\n');
 	  var trees = {};
 	  // id name is '' or does not exist, ask user to choose which tree.
-	  for (var _i = 0; _i < tArr.length; _i++) {
-	    if (tArr[_i].trim() === '') continue;
-	    var s = tArr[_i].replace(/tree\s/i, '');
+	  for (var i = 0; i < tArr.length; i++) {
+	    if (tArr[i].trim() === '') continue;
+	    var s = tArr[i].replace(/tree\s/i, '');
 	    if (!name) {
 	      name = s.trim().match(/^\w+/)[0];
 	    }
