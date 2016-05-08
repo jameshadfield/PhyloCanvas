@@ -840,6 +840,7 @@ return /******/ (function(modules) { // webpackBootstrap
 	    key: 'redrawOriginalTree',
 	    value: function redrawOriginalTree() {
 	      this.load(this.stringRepresentation);
+	      this.originalTreeRedrawn();
 	    }
 	  }, {
 	    key: 'storeNode',
@@ -1101,6 +1102,11 @@ return /******/ (function(modules) { // webpackBootstrap
 	          this.maxLabelLength[this.treeType] = dimensions.width;
 	        }
 	      }
+	    }
+	  }, {
+	    key: 'originalTreeRedrawn',
+	    value: function originalTreeRedrawn() {
+	      fireEvent(this.containerElement, 'originalTreeRedrawn', this);
 	    }
 	  }, {
 	    key: 'loadCompleted',

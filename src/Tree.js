@@ -545,6 +545,7 @@ export default class Tree {
 
   redrawOriginalTree() {
     this.load(this.stringRepresentation);
+    this.originalTreeRedrawn();
   }
 
   storeNode(node) {
@@ -756,6 +757,9 @@ export default class Tree {
     }
   }
 
+  originalTreeRedrawn() {
+    fireEvent(this.containerElement, 'originalTreeRedrawn', this);
+  }
 
   loadCompleted() {
     fireEvent(this.containerElement, 'loaded');
